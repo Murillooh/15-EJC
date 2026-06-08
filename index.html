@@ -262,7 +262,9 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
   align-items: center;
   min-height: 100vh;
   width: 100vw;
-  background: #000000;
+  background: #080810;
+  background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(200, 168, 75, 0.08), transparent),
+                    radial-gradient(ellipse 50% 50% at 50% 120%, rgba(200, 168, 75, 0.05), transparent);
   position: fixed;
   inset: 0;
   z-index: 9999;
@@ -270,28 +272,57 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
   padding: 1.5rem;
 }
 .login-card {
-  background: rgba(18, 18, 22, 0.85);
-  border: 1px solid rgba(212, 175, 55, 0.2);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
-  padding: 40px;
   width: 100%;
-  max-width: 440px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(10px);
-  text-align: center;
+  max-width: 780px;
+  min-height: 460px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  display: flex;
+  overflow: hidden;
   animation: si .35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Login Header */
-.login-header h1 {
+.login-card-left {
+  width: 42%;
+  background-color: #1e2633;
+  background-image: 
+    radial-gradient(circle at 50% 25%, rgba(200, 168, 75, 0.15) 0%, transparent 65%),
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 20px 20px, 20px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.login-card-right {
+  width: 58%;
+  background-color: #313b4d;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 40px;
+  position: relative;
+}
+
+.login-logo-container {
+  text-align: center;
+}
+.login-logo-container h1 {
   font-family: 'Elms Sans', sans-serif;
-  font-size: 32px;
+  font-size: 36px;
   font-weight: 400;
   color: #FFFFFF;
   letter-spacing: -0.5px;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
+  line-height: 1.1;
 }
-.login-header h1 span {
+.login-logo-container h1 span {
   background: linear-gradient(135deg, #E6B84D 0%, #B38F36 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -305,7 +336,6 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
   color: #8E8E93;
   text-transform: uppercase;
   letter-spacing: 3px;
-  margin-bottom: 35px;
 }
 
 /* Login Form */
@@ -442,6 +472,7 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
   font-size: 11px;
   color: rgba(255, 255, 255, 0.15);
   letter-spacing: 0.5px;
+  text-align: center;
 }
 
 @keyframes shake {
@@ -452,6 +483,26 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
 .login-card.shake {
   animation: shake 0.4s ease;
 }
+
+@media(max-width: 680px) {
+  .login-card {
+    flex-direction: column;
+    max-width: 440px;
+  }
+  .login-card-left {
+    width: 100%;
+    padding: 30px;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  .login-card-right {
+    width: 100%;
+    padding: 30px;
+  }
+  .login-logo-container h1 br {
+    display: none;
+  }
+}
 </style>
 </head>
 <body>
@@ -459,40 +510,44 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
 <!-- LOGIN SCREEN -->
 <div class="login-wrapper" id="login-wrapper">
   <div class="login-card">
-    <header class="login-header">
-      <h1>Meu <span>Estoque</span></h1>
-      <p class="login-subtitle">Gestão de Estoque</p>
-    </header>
-
-    <form class="login-form" onsubmit="handleLoginSubmit(event)">
-      <div class="login-form-group login-email-group">
-        <label for="login-email">E-mail Corporativo</label>
-        <div class="login-input-wrapper">
-          <input type="email" id="login-email" placeholder="admin@meuestoque.com.br" required autocomplete="email">
-        </div>
+    <div class="login-card-left">
+      <div class="login-logo-container">
+        <h1>Meu <br><span>Estoque</span></h1>
+        <p class="login-subtitle">Gestão de Estoque</p>
       </div>
-
-      <div class="login-form-group login-password-group">
-        <label for="login-pass">Senha de Acesso</label>
-        <div class="login-input-wrapper">
-          <input type="password" id="login-pass" placeholder="••••••••" required>
-          <button type="button" class="login-toggle-password" onclick="togglePasswordVisibility('login-pass', this)" aria-label="Mostrar senha">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-          </button>
+    </div>
+    
+    <div class="login-card-right">
+      <form class="login-form" onsubmit="handleLoginSubmit(event)">
+        <div class="login-form-group login-email-group">
+          <label for="login-email">E-mail Corporativo</label>
+          <div class="login-input-wrapper">
+            <input type="email" id="login-email" placeholder="admin@meuestoque.com.br" required autocomplete="email">
+          </div>
         </div>
-      </div>
 
-      <div id="login-error" class="login-error"></div>
+        <div class="login-form-group login-password-group">
+          <label for="login-pass">Senha de Acesso</label>
+          <div class="login-input-wrapper">
+            <input type="password" id="login-pass" placeholder="••••••••" required>
+            <button type="button" class="login-toggle-password" onclick="togglePasswordVisibility('login-pass', this)" aria-label="Mostrar senha">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </div>
+        </div>
 
-      <button type="submit" class="login-btn-submit">
-        Acessar Painel
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-      </button>
-    </form>
+        <div id="login-error" class="login-error"></div>
 
-    <footer class="login-footer">
-      Meu Estoque &copy; 2026
-    </footer>
+        <button type="submit" class="login-btn-submit">
+          Acessar Painel
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </button>
+      </form>
+
+      <footer class="login-footer">
+        Meu Estoque &copy; 2026
+      </footer>
+    </div>
   </div>
 </div>
 
