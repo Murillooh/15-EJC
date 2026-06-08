@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Meu Estoque — Gestão de Estoque</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Elms+Sans:ital,wght@0,100..900;1,100..900&family=Goldman:wght@400;700&family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&family=Smooch+Sans:wght@100..900&display=swap');
 :root{
@@ -580,32 +581,126 @@ let log=[];
 let editId=null;
 let page='estoque';
 let cfgTab='perfil';
-let cfg={empresa:'Meu Estoque Ltda.',cnpj:'00.000.000/0001-00',email:'admin@meuestoque.com.br',alertMin:true,alertEmail:false,darkMode:true,senha:'admin'};
+let cfg={empresa:'Meu Estoque Ltda.',cnpj:'00.000.000/0001-00',email:'admin@meuestoque.com.br',alertMin:true,alertEmail:false,darkMode:true,senha:'admin',supabaseUrl:'',supabaseKey:''};
 let nProd=7,nSupp=5;
 
 /* ══ PERSISTENCE ══ */
-function saveDB() {
+let supabaseClient = null;
+
+function initSupabase() {
+  if (cfg.supabaseUrl && cfg.supabaseKey) {
+    try {
+      supabaseClient = supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey);
+    } catch (e) {
+      console.error('Erro ao inicializar Supabase:', e);
+      supabaseClient = null;
+    }
+  } else {
+    supabaseClient = null;
+  }
+}
+
+function saveDBLocalOnly() {
   localStorage.setItem('meuestoque_products', JSON.stringify(products));
   localStorage.setItem('meuestoque_suppliers', JSON.stringify(suppliers));
   localStorage.setItem('meuestoque_log', JSON.stringify(log));
   localStorage.setItem('meuestoque_cfg', JSON.stringify(cfg));
 }
 
-function loadDB() {
-  const p = localStorage.getItem('meuestoque_products') || localStorage.getItem('aurum_products');
-  const s = localStorage.getItem('meuestoque_suppliers') || localStorage.getItem('aurum_suppliers');
-  const l = localStorage.getItem('meuestoque_log') || localStorage.getItem('aurum_log');
-  const c = localStorage.getItem('meuestoque_cfg') || localStorage.getItem('aurum_cfg');
-  
-  if (p) products = JSON.parse(p);
-  if (s) suppliers = JSON.parse(s);
-  if (l) log = JSON.parse(l);
-  if (c) {
-    const loadedCfg = JSON.parse(c);
-    cfg = { ...cfg, ...loadedCfg };
+function saveDB() {
+  saveDBLocalOnly();
+  if (supabaseClient) {
+    syncConfigToSupabase();
   }
-  
-  // Update counters to avoid duplicate IDs
+}
+
+async function syncConfigToSupabase() {
+  if (!supabaseClient) return;
+  try {
+    const { supabaseUrl, supabaseKey, ...rest } = cfg;
+    const { error } = await supabaseClient.from('config').upsert({ id: 1, ...rest });
+    if (error) throw error;
+  } catch (err) {
+    console.error("Erro ao salvar config no Supabase:", err);
+  }
+}
+
+async function syncProductToSupabase(p) {
+  if (!supabaseClient) return;
+  try {
+    const { error } = await supabaseClient.from('products').upsert({
+      id: p.id,
+      name: p.name,
+      desc: p.desc,
+      supplier: p.supplier,
+      price: p.price,
+      stock: p.stock,
+      min: p.min
+    });
+    if (error) throw error;
+  } catch (err) {
+    console.error("Erro ao sincronizar produto:", err);
+  }
+}
+
+async function deleteProductFromSupabase(id) {
+  if (!supabaseClient) return;
+  try {
+    const { error } = await supabaseClient.from('products').delete().eq('id', id);
+    if (error) throw error;
+  } catch (err) {
+    console.error("Erro ao deletar produto no Supabase:", err);
+  }
+}
+
+async function syncSupplierToSupabase(s) {
+  if (!supabaseClient) return;
+  try {
+    const { error } = await supabaseClient.from('suppliers').upsert(s);
+    if (error) throw error;
+  } catch (err) {
+    console.error("Erro ao sincronizar fornecedor:", err);
+  }
+}
+
+async function deleteSupplierFromSupabase(id) {
+  if (!supabaseClient) return;
+  try {
+    const { error } = await supabaseClient.from('suppliers').delete().eq('id', id);
+    if (error) throw error;
+  } catch (err) {
+    console.error("Erro ao deletar fornecedor no Supabase:", err);
+  }
+}
+
+async function insertLogToSupabase(entry) {
+  if (!supabaseClient) return;
+  try {
+    await supabaseClient.from('log').insert({
+      product_id: entry.id,
+      name: entry.name,
+      supplier: entry.supplier,
+      qty: entry.qty,
+      unit: entry.unit,
+      total: entry.total,
+      time: entry.time,
+      date: entry.date
+    });
+  } catch (err) {
+    console.error("Erro ao salvar log no Supabase:", err);
+  }
+}
+
+async function clearLogFromSupabase() {
+  if (!supabaseClient) return;
+  try {
+    await supabaseClient.from('log').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  } catch (err) {
+    console.error("Erro ao limpar logs no Supabase:", err);
+  }
+}
+
+function updateCounters() {
   products.forEach(prod => {
     const match = prod.id.match(/MEU-(\d+)/);
     if (match) {
@@ -621,6 +716,75 @@ function loadDB() {
       if (num >= nSupp) nSupp = num + 1;
     }
   });
+}
+
+async function loadDB() {
+  const p = localStorage.getItem('meuestoque_products') || localStorage.getItem('aurum_products');
+  const s = localStorage.getItem('meuestoque_suppliers') || localStorage.getItem('aurum_suppliers');
+  const l = localStorage.getItem('meuestoque_log') || localStorage.getItem('aurum_log');
+  const c = localStorage.getItem('meuestoque_cfg') || localStorage.getItem('aurum_cfg');
+  
+  if (p) products = JSON.parse(p);
+  if (s) suppliers = JSON.parse(s);
+  if (l) log = JSON.parse(l);
+  if (c) {
+    const loadedCfg = JSON.parse(c);
+    cfg = { ...cfg, ...loadedCfg };
+  }
+  
+  updateCounters();
+  initSupabase();
+
+  if (supabaseClient) {
+    try {
+      const { data: dbCfg, error: cfgErr } = await supabaseClient.from('config').select('*').single();
+      if (!cfgErr && dbCfg) {
+        const { id, created_at, ...rest } = dbCfg;
+        cfg = { ...cfg, ...rest };
+      }
+      
+      const { data: dbProducts, error: prodErr } = await supabaseClient.from('products').select('*').order('created_at', { ascending: true });
+      if (!prodErr && dbProducts) {
+        products = dbProducts.map(x => ({
+          id: x.id,
+          name: x.name,
+          desc: x.desc,
+          supplier: x.supplier,
+          price: parseFloat(x.price),
+          stock: parseInt(x.stock),
+          min: parseInt(x.min)
+        }));
+      }
+
+      const { data: dbSuppliers, error: suppErr } = await supabaseClient.from('suppliers').select('*').order('created_at', { ascending: true });
+      if (!suppErr && dbSuppliers) {
+        suppliers = dbSuppliers;
+      }
+
+      const { data: dbLog, error: logErr } = await supabaseClient.from('log').select('*').order('created_at', { ascending: true });
+      if (!logErr && dbLog) {
+        log = dbLog.map(x => ({
+          id: x.product_id,
+          name: x.name,
+          supplier: x.supplier,
+          qty: parseInt(x.qty),
+          unit: parseFloat(x.unit),
+          total: parseFloat(x.total),
+          time: x.time,
+          date: x.date
+        }));
+      }
+      
+      updateCounters();
+      saveDBLocalOnly();
+      
+      if (authenticated) {
+        render();
+      }
+    } catch (err) {
+      console.error("Erro ao sincronizar com Supabase:", err);
+    }
+  }
 }
 
 // Load database immediately
@@ -836,7 +1000,7 @@ function renderSaidas(){
     </table></div>`:`<div class="empty"><div class="empty-i">◇</div><div class="empty-t">Nenhuma saída registrada ainda</div></div>`}
   </div>`;
 }
-function clearLog(){if(!log.length)return;if(!confirm('Limpar todo o histórico de saídas?'))return;log=[];saveDB();notify('Histórico de saídas limpo','ok');render();document.getElementById('tba').innerHTML=''}
+function clearLog(){if(!log.length)return;if(!confirm('Limpar todo o histórico de saídas?'))return;log=[];saveDB();if(supabaseClient)clearLogFromSupabase();notify('Histórico de saídas limpo','ok');render();document.getElementById('tba').innerHTML=''}
 
 /* ══ FORNECEDORES ══ */
 function renderFornecedores(){
@@ -946,6 +1110,18 @@ function renderConfig(){
     </div>
     <div style="display:flex;justify-content:flex-end"><button class="btn btn-gold" onclick="saveCfg()">Salvar</button></div>`,
 
+    banco:`<div class="csec">
+      <div class="cstt">Conexão com o Supabase</div>
+      <div class="crow"><div><div class="clbl">Supabase Project URL</div><div class="csub">URL do seu projeto Supabase</div></div><input class="cinp" id="c-sb-url" value="${cfg.supabaseUrl || ''}" placeholder="https://xxxxxx.supabase.co" style="width:240px"/></div>
+      <div class="crow"><div><div class="clbl">Supabase Anon Key</div><div class="csub">Chave de acesso pública (anon/public)</div></div><input class="cinp" type="password" id="c-sb-key" value="${cfg.supabaseKey || ''}" placeholder="Chave do projeto" style="width:240px"/></div>
+      <div class="crow"><div><div class="clbl">Status da Conexão</div><div class="csub" id="c-sb-status-desc">Verificando status...</div></div><span class="badge" id="c-sb-status-badge">Verificando</span></div>
+    </div>
+    <div class="csec" id="c-sb-actions" style="display:none">
+      <div class="cstt">Sincronização & Migração</div>
+      <div class="crow"><div><div class="clbl">Migrar dados para o Supabase</div><div class="csub">Envia todos os produtos, fornecedores e saídas locais para o banco remoto</div></div><button class="btn btn-ghost btn-sm" id="btn-sb-migrate" onclick="migrateToSupabase()">Sincronizar Local -> Nuvem</button></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:9px"><button class="btn btn-ghost" onclick="testSupabaseConnection()">Testar Conexão</button><button class="btn btn-gold" onclick="saveDBCfg()">Salvar Credenciais</button></div>`,
+
     sistema:`<div class="csec">
       <div class="cstt">Aparência</div>
       <div class="crow"><div><div class="clbl">Tema escuro</div><div class="csub">Mudar entre claro e escuro</div></div><label class="tgl"><input type="checkbox" id="c-dark" ${cfg.darkMode?'checked':''} onchange="toggleTheme()"><span class="tsl"></span></label></div>
@@ -973,9 +1149,15 @@ function renderConfig(){
   const navs=[
     {k:'perfil',l:'Perfil & Empresa',i:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'},
     {k:'alertas',l:'Alertas',i:'<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>'},
+    {k:'banco',l:'Banco de Dados',i:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/>'},
     {k:'sistema',l:'Sistema & Dados',i:'<circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>'},
     {k:'sobre',l:'Sobre',i:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'}
   ];
+  
+  if (cfgTab === 'banco') {
+    setTimeout(updateSbStatusUI, 50);
+  }
+  
   return`<div class="cfg">
     <div class="cnav">${navs.map(n=>`<div class="cni ${cfgTab===n.k?'ca':''}" onclick="cfgTab='${n.k}';render()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${n.i}</svg>${n.l}</div>`).join('')}</div>
     <div class="cpanel">${panels[cfgTab]||''}</div>
@@ -1018,8 +1200,151 @@ function toggleTheme(){
   notify(cfg.darkMode?'Tema escuro ativado':'Tema claro ativado','ok');
 }
 
+function saveDBCfg() {
+  const url = document.getElementById('c-sb-url')?.value.trim() || '';
+  const key = document.getElementById('c-sb-key')?.value.trim() || '';
+  cfg.supabaseUrl = url;
+  cfg.supabaseKey = key;
+  saveDBLocalOnly();
+  initSupabase();
+  notify('Credenciais do Supabase salvas!', 'ok');
+  render();
+}
+
+async function testSupabaseConnection() {
+  const url = document.getElementById('c-sb-url')?.value.trim() || '';
+  const key = document.getElementById('c-sb-key')?.value.trim() || '';
+  if (!url || !key) {
+    notify('Preencha a URL e a Anon Key para testar', 'err');
+    return;
+  }
+  notify('Testando conexão...', 'info');
+  try {
+    const tempClient = supabase.createClient(url, key);
+    const { error } = await tempClient.from('config').select('*').limit(1);
+    if (error) {
+      if (error.code === 'PGRST116' || error.message.includes('relation "config" does not exist')) {
+        notify('Conexão OK! Lembrar de rodar o SQL no Supabase para criar as tabelas.', 'info');
+        return;
+      }
+      throw error;
+    }
+    notify('Conexão com o Supabase ativa e tabelas prontas!', 'ok');
+  } catch (err) {
+    console.error(err);
+    notify('Erro ao conectar: ' + (err.message || err), 'err');
+  }
+}
+
+async function updateSbStatusUI() {
+  const badge = document.getElementById('c-sb-status-badge');
+  const desc = document.getElementById('c-sb-status-desc');
+  const actions = document.getElementById('c-sb-actions');
+  if (!badge || !desc) return;
+  
+  if (!supabaseClient) {
+    badge.className = 'badge b-err';
+    badge.textContent = 'Local';
+    desc.textContent = 'Trabalhando offline (LocalStorage)';
+    if (actions) actions.style.display = 'none';
+    return;
+  }
+  
+  badge.className = 'badge b-warn';
+  badge.textContent = 'Conectando...';
+  desc.textContent = 'Verificando tabelas do banco de dados remoto...';
+  
+  try {
+    const { error } = await supabaseClient.from('config').select('*').limit(1);
+    if (error) {
+      if (error.code === 'PGRST116' || error.message.includes('relation "config" does not exist')) {
+        badge.className = 'badge b-warn';
+        badge.textContent = 'Erro de Tabelas';
+        desc.textContent = 'Conectado ao Supabase, mas tabelas não criadas (Rode o Script SQL!).';
+      } else {
+        throw error;
+      }
+    } else {
+      badge.className = 'badge b-ok';
+      badge.textContent = 'Conectado';
+      desc.textContent = 'Sincronizado com o Supabase com sucesso!';
+      if (actions) actions.style.display = 'block';
+    }
+  } catch (err) {
+    badge.className = 'badge b-err';
+    badge.textContent = 'Erro';
+    desc.textContent = 'Falha na conexão: ' + (err.message || err);
+  }
+}
+
+async function migrateToSupabase() {
+  if (!supabaseClient) {
+    notify('Supabase não conectado', 'err');
+    return;
+  }
+  const btn = document.getElementById('btn-sb-migrate');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Migrando...';
+  }
+  notify('Iniciando migração dos dados locais...', 'info');
+  
+  try {
+    const { supabaseUrl, supabaseKey, ...rest } = cfg;
+    await supabaseClient.from('config').upsert({ id: 1, ...rest });
+    
+    for (const s of suppliers) {
+      await supabaseClient.from('suppliers').upsert(s);
+    }
+    
+    for (const p of products) {
+      await supabaseClient.from('products').upsert({
+        id: p.id,
+        name: p.name,
+        desc: p.desc,
+        supplier: p.supplier,
+        price: p.price,
+        stock: p.stock,
+        min: p.min
+      });
+    }
+    
+    for (const l of log) {
+      await supabaseClient.from('log').insert({
+        product_id: l.id,
+        name: l.name,
+        supplier: l.supplier,
+        qty: l.qty,
+        unit: l.unit,
+        total: l.total,
+        time: l.time,
+        date: l.date
+      });
+    }
+    notify('Migração concluída com sucesso!', 'ok');
+    await loadDB();
+  } catch (err) {
+    console.error(err);
+    notify('Erro durante a migração: ' + (err.message || err), 'err');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Sincronizar Local -> Nuvem';
+    }
+  }
+}
+
 /* ══ CRUD PRODUTOS ══ */
-function addOne(id){const p=products.find(x=>x.id===id);if(p){p.stock++;saveDB();render();if(p.stock>p.min)notify(`${p.name} — estoque atualizado`,'ok')}}
+function addOne(id){
+  const p=products.find(x=>x.id===id);
+  if(p){
+    p.stock++;
+    saveDB();
+    if(supabaseClient) syncProductToSupabase(p);
+    render();
+    if(p.stock>p.min)notify(`${p.name} — estoque atualizado`,'ok');
+  }
+}
 function rmOne(id){const p=products.find(x=>x.id===id);if(p&&p.stock>0)openRmModal(p)}
 
 function openRmModal(p){
@@ -1039,8 +1364,13 @@ function upCalc(price,max){const q=Math.min(Math.max(1,parseInt(document.getElem
 function confirmRm(id,price,max){
   const qty=Math.min(Math.max(1,parseInt(document.getElementById('rq').value)||1),max);
   const p=products.find(x=>x.id===id);p.stock-=qty;
-  log.push({id:p.id,name:p.name,supplier:p.supplier,qty,unit:price,total:qty*price,time:nowT(),date:todayD()});
+  const entry={id:p.id,name:p.name,supplier:p.supplier,qty,unit:price,total:qty*price,time:nowT(),date:todayD()};
+  log.push(entry);
   saveDB();
+  if(supabaseClient) {
+    syncProductToSupabase(p);
+    insertLogToSupabase(entry);
+  }
   notify(`Saída de ${qty} un de "${p.name}" — ${fmt(qty*price)}`,'ok');
   if(p.stock===0) notify(`⚠ "${p.name}" chegou a zero!`,'err');
   else if(p.stock<=p.min) notify(`⚠ "${p.name}" abaixo do mínimo (${p.min})`,'info');
@@ -1070,9 +1400,21 @@ function saveProd(isNew){
   const stock=parseInt(document.getElementById('fst').value)||0;
   const min=parseInt(document.getElementById('fm').value)||10;
   if(!id||!name){notify('Preencha código e nome','err');return}
-  if(isNew){if(products.find(x=>x.id===id)){notify('Código já existe','err');return}products.push({id,name,desc,supplier,price,stock,min});nProd++;notify(`"${name}" cadastrado com sucesso`,'ok')}
-  else{Object.assign(products.find(x=>x.id===editId),{name,desc,supplier,price,stock,min});notify(`"${name}" atualizado`,'ok')}
+  let p;
+  if(isNew){
+    if(products.find(x=>x.id===id)){notify('Código já existe','err');return}
+    p={id,name,desc,supplier,price,stock,min};
+    products.push(p);
+    nProd++;
+    notify(`"${name}" cadastrado com sucesso`,'ok');
+  }
+  else{
+    p=products.find(x=>x.id===editId);
+    Object.assign(p,{name,desc,supplier,price,stock,min});
+    notify(`"${name}" atualizado`,'ok');
+  }
   saveDB();
+  if(supabaseClient) syncProductToSupabase(p);
   closeModal();render();
 }
 function delProdConfirm(id){
@@ -1082,7 +1424,14 @@ function delProdConfirm(id){
   <div class="mft"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-red" onclick="delProd('${id}')">Excluir produto</button></div>`;
   showOv();
 }
-function delProd(id){const p=products.find(x=>x.id===id);products=products.filter(x=>x.id!==id);saveDB();notify(`"${p.name}" excluído`,'ok');closeModal();render()}
+function delProd(id){
+  const p=products.find(x=>x.id===id);
+  products=products.filter(x=>x.id!==id);
+  saveDB();
+  if(supabaseClient) deleteProductFromSupabase(id);
+  notify(`"${p.name}" excluído`,'ok');
+  closeModal();render();
+}
 
 /* ══ CRUD FORNECEDORES ══ */
 function openAddSupp(){editId=null;document.getElementById('modal').innerHTML=buildSuppForm({id:genId('SUP',nSupp),name:'',cat:'',email:'',phone:'',cnpj:'',city:'',status:'ativo'},true);showOv()}
@@ -1106,9 +1455,18 @@ function saveSupp(isNew){
   const name=document.getElementById('sn').value.trim();
   if(!id||!name){notify('Preencha código e nome','err');return}
   const obj={id,name,cat:document.getElementById('sc').value.trim(),email:document.getElementById('se').value.trim(),phone:document.getElementById('st').value.trim(),cnpj:document.getElementById('scn').value.trim(),city:document.getElementById('sci').value.trim(),status:document.getElementById('sst').value};
-  if(isNew){if(suppliers.find(x=>x.id===id)){notify('Código já existe','err');return}suppliers.push(obj);nSupp++;notify(`"${name}" cadastrado`,'ok')}
-  else{Object.assign(suppliers.find(x=>x.id===editId),obj);notify(`"${name}" atualizado`,'ok')}
+  if(isNew){
+    if(suppliers.find(x=>x.id===id)){notify('Código já existe','err');return}
+    suppliers.push(obj);
+    nSupp++;
+    notify(`"${name}" cadastrado`,'ok');
+  }
+  else{
+    Object.assign(suppliers.find(x=>x.id===editId),obj);
+    notify(`"${name}" atualizado`,'ok');
+  }
   saveDB();
+  if(supabaseClient) syncSupplierToSupabase(obj);
   closeModal();render();
 }
 function delSuppConfirm(id){
@@ -1118,7 +1476,14 @@ function delSuppConfirm(id){
   <div class="mft"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-red" onclick="delSupp('${id}')">Excluir</button></div>`;
   showOv();
 }
-function delSupp(id){const s=suppliers.find(x=>x.id===id);suppliers=suppliers.filter(x=>x.id!==id);saveDB();notify(`"${s.name}" excluído`,'ok');closeModal();render()}
+function delSupp(id){
+  const s=suppliers.find(x=>x.id===id);
+  suppliers=suppliers.filter(x=>x.id!==id);
+  saveDB();
+  if(supabaseClient) deleteSupplierFromSupabase(id);
+  notify(`"${s.name}" excluído`,'ok');
+  closeModal();render();
+}
 
 /* ══ EXPORTS ══ */
 function exportCSV(){
