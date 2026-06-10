@@ -746,6 +746,7 @@
     .cart-panel .cart-footer {
       display: grid;
       gap: .65rem;
+      margin-top: auto;
     }
 
     .cart-panel .cart-summary {
@@ -1328,13 +1329,74 @@
 
     /* TABLE */
     .tw {
-      overflow-x: auto
+      overflow-x: auto;
+      width: 100%;
+    }
+
+    .tw table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 0;
+      table-layout: auto;
+    }
+
+    .tw th,
+    .tw td {
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      padding: .9rem 1.1rem;
+    }
+
+    .tw th:nth-child(1) {
+      width: 12%;
+      min-width: 120px;
+    }
+
+    .tw th:nth-child(2) {
+      width: 18%;
+      min-width: 150px;
+    }
+
+    .tw th:nth-child(3) {
+      width: 30%;
+      min-width: 180px;
+    }
+
+    .tw th:nth-child(4) {
+      width: 8%;
+      min-width: 80px;
+      text-align: center;
+    }
+
+    .tw th:nth-child(5) {
+      width: 16%;
+      min-width: 120px;
+    }
+
+    .tw th:nth-child(6) {
+      width: auto;
+      min-width: 220px;
+    }
+
+    .tw td.actions-cell {
+      overflow: visible;
+      display: flex;
+      gap: .65rem;
+      justify-content: flex-end;
+      flex-wrap: nowrap;
+      min-width: 220px;
+    }
+
+    .tw td.actions-cell button {
+      white-space: nowrap;
+      flex: 0 0 auto;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      min-width: 600px
+      min-width: 600px;
     }
 
     th {
@@ -1356,6 +1418,12 @@
       vertical-align: middle;
       font-size: 13px;
       color: var(--text)
+    }
+
+    .tw td > button + button,
+    .payment-cart-table td > button + button,
+    .report-compact-table td > button + button {
+      margin-left: .5rem;
     }
 
     tr:last-child td {
@@ -2415,6 +2483,30 @@
       word-break: break-all;
     }
 
+    .payment-change {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: .95rem 1rem;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: var(--rs);
+      background: rgba(255,255,255,.03);
+      gap: .5rem;
+    }
+
+    .payment-change span {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--text-s);
+    }
+
+    .payment-change strong {
+      font-size: 15px;
+      color: var(--text);
+      font-weight: 700;
+    }
+
     .payment-grid {
       display: grid;
       grid-template-columns: 1.05fr 0.95fr;
@@ -3216,6 +3308,13 @@
           </svg>
           Estoque
         </div>
+        <div class="ni" onclick="goPage('pedidos',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M4 7h16M4 12h10M4 17h16" />
+            <path d="M20 5v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5" />
+          </svg>
+          Pedidos salvos
+        </div>
         <div class="ni" onclick="goPage('saidas',this)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.5 7h13" />
@@ -3352,13 +3451,14 @@
     let log = [];
     let entries = [];
     let cart = [];
+    let cartBuyer = '';
     let savedOrders = [];
     let pendingPayment = null;
     let categories = ['Eletrônicos', 'Periféricos', 'Monitores', 'Áudio'];
     let tags = ['Gamer', 'USB', 'Wireless', '4K'];
     let editId = null;
     const storedPage = localStorage.getItem('meuestoque_page');
-    const validPages = ['estoque','saidas','entradas','fornecedores','relatorios','configuracoes'];
+    const validPages = ['estoque','saidas','pedidos','entradas','fornecedores','relatorios','configuracoes'];
     let page = validPages.includes(storedPage) ? storedPage : 'estoque';
     let sortBy = 'name';
     let sortDir = 'asc';
@@ -3398,6 +3498,7 @@
       localStorage.setItem('meuestoque_log', JSON.stringify(log));
       localStorage.setItem('meuestoque_entries', JSON.stringify(entries));
       localStorage.setItem('meuestoque_cart', JSON.stringify(cart));
+      localStorage.setItem('meuestoque_cartBuyer', cartBuyer);
       localStorage.setItem('meuestoque_orders', JSON.stringify(savedOrders));
       localStorage.setItem('meuestoque_categories', JSON.stringify(categories));
       localStorage.setItem('meuestoque_tags', JSON.stringify(tags));
@@ -3407,6 +3508,7 @@
 
     function saveCart() {
       localStorage.setItem('meuestoque_cart', JSON.stringify(cart));
+      localStorage.setItem('meuestoque_cartBuyer', cartBuyer);
     }
 
     function saveDB() {
@@ -3536,6 +3638,8 @@
       if (l) log = JSON.parse(l);
       if (entriesData) entries = JSON.parse(entriesData);
       if (cartItems) cart = JSON.parse(cartItems);
+      const cb = localStorage.getItem('meuestoque_cartBuyer');
+      if (cb) cartBuyer = cb;
       if (o) savedOrders = JSON.parse(o);
       if (cats) categories = JSON.parse(cats);
       if (tgs) tags = JSON.parse(tgs);
@@ -4067,7 +4171,7 @@
       localStorage.setItem('meuestoque_page', page);
       document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
       if (el) el.classList.add('active');
-      sv('pg-ttl') && (document.getElementById('pg-ttl').textContent = { estoque: 'Estoque', saidas: 'Saídas', entradas: 'Entradas', fornecedores: 'Fornecedores', relatorios: 'Relatórios', configuracoes: 'Configurações' }[p]);
+      sv('pg-ttl') && (document.getElementById('pg-ttl').textContent = { estoque: 'Estoque', saidas: 'Saídas', pedidos: 'Pedidos salvos', entradas: 'Entradas', fornecedores: 'Fornecedores', relatorios: 'Relatórios', configuracoes: 'Configurações' }[p]);
       const sw = document.getElementById('sw'), fs = document.getElementById('fs');
       const toolbarFilters = document.getElementById('toolbar-filters');
       const tba = document.getElementById('tba');
@@ -4078,6 +4182,8 @@
       if (p === 'estoque') {
         currentPage = 1;
         tba.innerHTML = `<button class="btn btn-gold" onclick="openAddProd()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Novo produto</button>`;
+      } else if (p === 'pedidos') {
+        tba.innerHTML = '';
       } else if (p === 'fornecedores') tba.innerHTML = `<button class="btn btn-gold" onclick="openAddSupp()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Novo fornecedor</button>`;
       else if (p === 'saidas') tba.innerHTML = `${log.length ? `<button class="btn btn-ghost btn-sm" onclick="clearLog()">Limpar histórico</button>` : ''}`;
       else if (p === 'entradas') tba.innerHTML = `<button class="btn btn-gold" onclick="openAddEntry()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Registrar entrada</button>${entries.length ? `<button class="btn btn-ghost btn-sm" onclick="clearEntries()">Limpar registro</button>` : ''}`;
@@ -4091,6 +4197,7 @@
       const c = document.getElementById('content');
       if (page === 'estoque') c.innerHTML = renderEstoque();
       else if (page === 'saidas') c.innerHTML = renderSaidas();
+      else if (page === 'pedidos') c.innerHTML = renderSavedOrders();
       else if (page === 'entradas') c.innerHTML = renderEntradas();
       else if (page === 'fornecedores') c.innerHTML = renderFornecedores();
       else if (page === 'relatorios') c.innerHTML = renderRelatorios();
@@ -4118,22 +4225,20 @@
       const items = getCartItems();
       const itemCount = items.reduce((a, item) => a + item.qty, 0);
       const total = items.reduce((a, item) => a + item.total, 0);
-      const ordersHtml = savedOrders.length ? `<div class="saved-orders">${savedOrders.slice(0, 6).map(order => `<div class="saved-order"><div><strong>${order.id}</strong></div><small>${order.savedAt}</small><div>${order.items.length} item${order.items.length !== 1 ? 's' : ''} • ${fmt(order.total)}</div><div style="display:grid;gap:.5rem;margin-top:.5rem;"><button class="btn btn-ghost btn-sm" onclick="restoreOrder('${order.id}')">Restaurar</button><button class="btn btn-del btn-sm" onclick="deleteSavedOrder('${order.id}')">Excluir</button></div></div>`).join('')}</div>` : `<div class="empty"><div class="empty-i">◇</div><div class="empty-t">Nenhum pedido temporário salvo</div></div>`;
       panel.innerHTML = `
         <div class="cart-head">
           <div><h3>Carrinho</h3><small>${itemCount} item${itemCount !== 1 ? 's' : ''}</small></div>
-          <button class="btn btn-gold btn-sm" onclick="saveOrder()" ${items.length ? '' : 'disabled'}>Salvar pedido</button>
+          <button type="button" class="btn btn-gold btn-sm" onclick="saveOrder()" ${items.length ? '' : 'disabled'}>Salvar pedido</button>
         </div>
         <div class="cart-summary">
            <div><strong>Total</strong><span>${fmt(total)}</span></div>
            <div><strong>Itens</strong><span>${itemCount}</span></div>
         </div>
         <div class="cart-body">
-          ${items.length ? items.map(item => `<div class="cart-item"><div class="row"><strong>${item.product.name}</strong><span>${fmt(item.total)}</span></div><div><small>${item.product.id} • ${fmt(item.product.price)} cada</small></div><div class="cart-actions"><input type="number" min="1" value="${item.qty}" onchange="changeCartQty('${item.id}',0,this.value)" /><button class="btn btn-del btn-sm" onclick="removeFromCart('${item.id}')">Remover</button></div></div>`).join('') : `<div class="empty"><div class="empty-i">◇</div><div class="empty-t">Carrinho vazio</div></div>`}
+          ${items.length ? `<div class="fld"><label>Cliente</label><input type="text" id="cart-buyer" class="inp" value="${cartBuyer}" placeholder="Nome do cliente" oninput="updateCartBuyer(this.value)" /></div>${items.map(item => `<div class="cart-item"><div class="row"><strong>${item.product.name}</strong><span>${fmt(item.total)}</span></div><div><small>${item.product.id} • ${fmt(item.product.price)} cada</small></div><div class="cart-actions"><input type="number" min="1" value="${item.qty}" onchange="changeCartQty('${item.id}',0,this.value)" /><button class="btn btn-del btn-sm" onclick="removeFromCart('${item.id}')">Remover</button></div></div>`).join('')}` : `<div class="empty"><div class="empty-i">◇</div><div class="empty-t">Carrinho vazio</div></div>`}
         </div>
         <div class="cart-footer">
-          <button class="btn btn-gold" onclick="checkoutCart()" ${items.length ? '' : 'disabled'}>Finalizar saída</button>
-          ${savedOrders.length ? `<div style="font-size:.9rem;color:var(--text-s);">Pedidos salvos</div>${ordersHtml}` : ordersHtml}
+          <button type="button" class="btn btn-gold" onclick="checkoutCart()" ${items.length ? '' : 'disabled'}>Finalizar saída</button>
         </div>`;
     }
 
@@ -4254,6 +4359,28 @@
         <td><span class="mut">${l.time} · ${l.date}</span></td>
       </tr>`).join('')}</tbody>
     </table></div>`: `<div class="empty"><div class="empty-i">◇</div><div class="empty-t">Nenhuma saída registrada ainda</div></div>`}
+  </div>`;
+    }
+
+    function renderSavedOrders() {
+      const count = savedOrders.length;
+      const totalSaved = savedOrders.reduce((sum, o) => sum + o.total, 0);
+      const rows = savedOrders.slice().map(order => `<tr>
+        <td><span class="code">${order.id}</span></td>
+        <td>${order.savedAt}</td>
+        <td>${order.buyer || '—'}</td>
+        <td>${order.items.length}</td>
+        <td>${fmt(order.total)}</td>
+        <td class="actions-cell"><button class="btn btn-gold btn-sm" onclick="checkoutSavedOrder('${order.id}')">Finalizar</button><button class="btn btn-ghost btn-sm" onclick="restoreOrder('${order.id}')">Restaurar</button><button class="btn btn-del btn-sm" onclick="deleteSavedOrder('${order.id}')">Excluir</button></td>
+      </tr>`).join('');
+      return `
+  <div class="sg g3">
+    <div class="sc"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 5H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Z"/><path d="M8 11h8"/><path d="M8 15h5"/></svg></div><div class="sl">Pedidos salvos</div><div class="sv">${count}</div><div class="ss">pedidos aguardando resgate</div></div>
+    <div class="sc"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18"/><path d="M3 12h18"/><path d="M3 18h18"/></svg></div><div class="sl">Valor total aguardando</div><div class="sv sm">${fmt(totalSaved)}</div><div class="ss">valor dos pedidos salvos</div></div>
+  </div>
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-ttl">Lista de pedidos salvos</span><span class="sec-sub">${count} pedido${count !== 1 ? 's' : ''}</span></div>
+    ${count ? `<div class="tw"><table><thead><tr><th>Código</th><th>Salvo em</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Ações</th></tr></thead><tbody>${rows}</tbody></table></div>` : `<div class="empty"><div class="empty-i">◇</div><div class="empty-t">Nenhum pedido salvo disponível</div></div>`}
   </div>`;
     }
     function clearLog() { if (!log.length) return; if (!confirm('Limpar todo o histórico de saídas?')) return; log = []; saveDB(); if (supabaseClient) clearLogFromSupabase(); notify('Histórico de saídas limpo', 'ok'); render(); document.getElementById('tba').innerHTML = '' }
@@ -4809,19 +4936,27 @@
       const order = {
         id: `PED-${String(now.getTime()).slice(-6)}`,
         savedAt: `${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
+        buyer: cartBuyer.trim(),
         items: items.map(item => ({ id: item.id, qty: item.qty })),
         total: items.reduce((sum, item) => sum + item.total, 0)
       };
       savedOrders.unshift(order);
       if (savedOrders.length > 10) savedOrders.length = 10;
+      cart = [];
+      cartBuyer = '';
       saveDB();
-      renderCartPanel();
-      notify('Pedido temporário salvo', 'ok');
+      render();
+      notify('Pedido temporário salvo com cliente', 'ok');
+    }
+    function updateCartBuyer(value) {
+      cartBuyer = value;
+      saveCart();
     }
     function restoreOrder(id) {
       const order = savedOrders.find(o => o.id === id);
       if (!order) return;
       cart = order.items.map(item => ({ id: item.id, qty: item.qty }));
+      cartBuyer = order.buyer || ''; 
       saveCart();
       render();
       notify('Pedido restaurado', 'ok');
@@ -4829,8 +4964,26 @@
     function deleteSavedOrder(id) {
       savedOrders = savedOrders.filter(o => o.id !== id);
       saveDB();
-      renderCartPanel();
+      if (page === 'pedidos') {
+        render();
+      } else {
+        renderCartPanel();
+      }
       notify('Pedido temporário removido', 'info');
+    }
+    function checkoutSavedOrder(id) {
+      const order = savedOrders.find(o => o.id === id);
+      if (!order) { notify('Pedido não encontrado.', 'err'); return; }
+      const items = order.items.map(item => {
+        const product = products.find(p => p.id === item.id);
+        return product ? { product, qty: item.qty, total: item.qty * product.price } : null;
+      }).filter(Boolean);
+      if (!items.length) { notify('Nenhum item válido encontrado para este pedido.', 'err'); return; }
+      const total = items.reduce((sum, item) => sum + item.total, 0);
+      const count = items.reduce((sum, item) => sum + item.qty, 0);
+      pendingPayment = { items, total, count, method: 'PIX', savedOrderId: id, buyer: order.buyer || '' };
+      renderPaymentModal();
+      showOv();
     }
     function checkoutCart() {
       if (!cart.length) return;
@@ -4838,7 +4991,7 @@
       if (!items.length) { notify('Carrinho vazio. Não há saída para registrar.', 'info'); return; }
       const total = items.reduce((sum, item) => sum + item.total, 0);
       const count = items.reduce((sum, item) => sum + item.qty, 0);
-      pendingPayment = { items, total, count, method: 'PIX' };
+      pendingPayment = { items, total, count, method: 'PIX', buyer: cartBuyer || '' };
       renderPaymentModal();
       showOv();
     }
@@ -4846,11 +4999,17 @@
     function renderPaymentModal() {
       if (!pendingPayment) return;
       const { items, total, count, method } = pendingPayment;
+      const cashReceived = method === 'Dinheiro' ? (typeof pendingPayment.cashReceived === 'number' ? pendingPayment.cashReceived : '') : 0;
+      const changeText = method === 'Dinheiro' && cashReceived !== '' ? (cashReceived >= total ? fmt(cashReceived - total) : 'Valor insuficiente') : '';
       const paymentInfo = `<div class="payment-summary">
         <div class="payment-summary-title">Total a pagar</div>
         <div class="payment-summary-value">${fmt(total)}</div>
         <div class="payment-summary-note">Preço em Reais brasileiros (BRL)</div>
       </div>`;
+      const cashField = method === 'Dinheiro' ? `
+        <div class="fld payment-cash"><label>Valor entregue pelo cliente</label><input type="number" id="payment-cash" class="inp" min="0.01" step="0.01" value="${cashReceived === '' ? '' : cashReceived.toFixed(2)}" oninput="updateCashReceived(this.value)" placeholder="Digite o valor entregue" /></div>
+        <div class="payment-change"><span>Troco</span><strong>${changeText}</strong></div>
+      ` : '';
       const qrSection = `<div class="payment-qr">
         <div class="payment-qr-icon">${method === 'Pix' ? 'PIX' : method === 'Dinheiro' ? '💵' : '💳'}</div>
         <div class="payment-qr-text">${method === 'Pix' ? 'Pagamento por PIX selecionado. O pedido será registrado como pago por PIX.' : `Finalize o pagamento no caixa com ${method.toLowerCase()}.`}</div>
@@ -4867,13 +5026,14 @@
     <div class="payment-grid">
       <div class="payment-panel">
         ${paymentInfo}
-        <div class="fld payment-buyer"><label>Nome do comprador</label><input type="text" class="inp" id="payment-buyer" placeholder="Ex: Carolina Braga" /></div>
+        <div class="fld payment-buyer"><label>Nome do comprador</label><input type="text" class="inp" id="payment-buyer" value="${pendingPayment.buyer || ''}" placeholder="Ex: Carolina Braga" oninput="updatePaymentBuyer(this.value)" /></div>
         <div class="payment-methods">
           <button type="button" class="payment-method ${method === 'Pix' ? 'active' : ''}" onclick="selectPaymentMethod('Pix', this)">PIX</button>
           <button type="button" class="payment-method ${method === 'Cartão de crédito' ? 'active' : ''}" onclick="selectPaymentMethod('Cartão de crédito', this)">Cartão</button>
           <button type="button" class="payment-method ${method === 'Dinheiro' ? 'active' : ''}" onclick="selectPaymentMethod('Dinheiro', this)">Dinheiro</button>
         </div>
         ${qrSection}
+        ${cashField}
       </div>
       <div class="payment-cart">
         <div class="sec-sub">${count} item${count !== 1 ? 's' : ''} • Total ${fmt(total)}</div>
@@ -4884,7 +5044,7 @@
   <div class="mft"><button class="btn btn-ghost" onclick="closeModal()">Voltar</button><button class="btn btn-gold" onclick="confirmPayment()">Finalizar venda</button></div>`;
     }
 
-    function removePendingPaymentItem(id) {
+      function removePendingPaymentItem(id) {
       if (!pendingPayment) return;
       pendingPayment.items = pendingPayment.items.filter(item => item.product.id !== id);
       cart = cart.filter(item => item.id !== id);
@@ -4902,16 +5062,30 @@
     }
     function selectPaymentMethod(method, btn) {
       if (!pendingPayment) pendingPayment = { method: 'Dinheiro' };
+      const buyerInput = document.getElementById('payment-buyer');
+      if (buyerInput) pendingPayment.buyer = buyerInput.value;
+      const cashInput = document.getElementById('payment-cash');
+      if (cashInput) {
+        const value = parseFloat(cashInput.value);
+        pendingPayment.cashReceived = !isNaN(value) ? value : pendingPayment.cashReceived;
+      }
       pendingPayment.method = method;
       document.querySelectorAll('.payment-method').forEach(b => b.classList.remove('active'));
       if (btn) btn.classList.add('active');
-      const qr = document.querySelector('.payment-qr');
-      if (!qr) return;
-      if (method === 'Pix') {
-        qr.innerHTML = `<div class="payment-qr-icon">PIX</div><div class="payment-qr-text">Pagamento por PIX selecionado. O pedido será registrado como pago por PIX.</div>`;
-      } else {
-        qr.innerHTML = `<div class="payment-qr-icon">${method === 'Dinheiro' ? '💵' : '💳'}</div><div class="payment-qr-text">Finalize o pagamento no caixa com ${method.toLowerCase()}.</div><div class="payment-qr-key" style="background:rgba(255,255,255,.04);">Forma selecionada: ${method}</div>`;
-      }
+      renderPaymentModal();
+    }
+    function updateCashReceived(value) {
+      if (!pendingPayment) return;
+      const amount = parseFloat(value);
+      pendingPayment.cashReceived = isNaN(amount) ? 0 : amount;
+      const total = pendingPayment.total || 0;
+      const changeText = pendingPayment.cashReceived >= total ? fmt(pendingPayment.cashReceived - total) : 'Valor insuficiente';
+      const changeEl = document.querySelector('.payment-change strong');
+      if (changeEl) changeEl.textContent = changeText;
+    }
+    function updatePaymentBuyer(value) {
+      if (!pendingPayment) return;
+      pendingPayment.buyer = value;
     }
     function confirmPayment() {
       if (!pendingPayment || !pendingPayment.items.length) {
@@ -4921,6 +5095,14 @@
         return;
       }
       const paymentMethod = pendingPayment.method || 'Dinheiro';
+      if (paymentMethod === 'Dinheiro') {
+        const cashValue = parseFloat(document.getElementById('payment-cash')?.value || '0');
+        if (isNaN(cashValue) || cashValue < pendingPayment.total) {
+          notify('O valor em dinheiro deve ser igual ou maior que o total.', 'err');
+          return;
+        }
+        pendingPayment.cashReceived = cashValue;
+      }
       const entriesToProcess = [];
       pendingPayment.items.forEach(item => {
         const p = products.find(x => x.id === item.product.id);
@@ -4946,7 +5128,12 @@
       });
       const total = entriesToProcess.reduce((sum, e) => sum + e.total, 0);
       const count = entriesToProcess.reduce((sum, e) => sum + e.qty, 0);
-      notify(`Pagamento ${paymentMethod} concluído. Saída registrada: ${count} item${count !== 1 ? 's' : ''} • ${fmt(total)}`, 'ok');
+      const changeNote = paymentMethod === 'Dinheiro' ? ` • Troco ${fmt(pendingPayment.cashReceived - total)}` : '';
+      if (pendingPayment.savedOrderId) {
+        savedOrders = savedOrders.filter(o => o.id !== pendingPayment.savedOrderId);
+        saveDB();
+      }
+      notify(`Pagamento ${paymentMethod} concluído.${changeNote} Saída registrada: ${count} item${count !== 1 ? 's' : ''} • ${fmt(total)}`, 'ok');
       pendingPayment = null;
       closeModal();
       goPage('saidas');
