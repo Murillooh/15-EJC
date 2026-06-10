@@ -264,7 +264,7 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
   align-items: center;
   min-height: 100vh;
   width: 100vw;
-  background: #000000;
+  background: var(--bg);
   position: fixed;
   inset: 0;
   z-index: 9999;
@@ -275,8 +275,8 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
 .login-card {
   width: 100%;
   max-width: 420px;
-  background: #0a0a0a;
-  border: 1.5px solid #d4af6a;
+  background: var(--s2);
+  border: 1.5px solid var(--gold-bd);
   border-radius: 16px;
   padding: 2.5rem 2rem 2rem;
   position: relative;
@@ -348,6 +348,11 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
   margin: 1.2rem auto;
 }
 
+#login-form {
+  display: flex;
+  flex-direction: column;
+}
+
 .login-card .form-group {
   margin-bottom: 1.1rem;
 }
@@ -380,12 +385,12 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
 .login-card input[type="text"],
 .login-card input[type="password"] {
   width: 100%;
-  background: #111111;
-  border: 1px solid #d4af6a;
+  background: var(--s3);
+  border: 1px solid var(--gold-bd);
   border-radius: 8px;
   padding: 10px 12px 10px 38px;
   font-size: 14px;
-  color: #ffffff;
+  color: var(--text);
   font-family: 'Lato', sans-serif;
   outline: none;
   transition: border-color 0.2s, background 0.2s;
@@ -394,24 +399,24 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
 .login-card input[type="email"]::placeholder,
 .login-card input[type="text"]::placeholder,
 .login-card input[type="password"]::placeholder {
-  color: rgba(255, 255, 255, 0.2);
+  color: var(--text-m);
 }
 
 .login-card input[type="email"]:focus,
 .login-card input[type="text"]:focus,
 .login-card input[type="password"]:focus {
-  border-color: #f0c94d;
-  background: #161616;
-}
-
-.login-card .forgot {
-  text-align: right;
-  margin-top: 6px;
+  border-color: var(--gold-d);
+  background: var(--s4);
 }
 
 .login-card .forgot a {
   font-size: 11.5px;
-  color: rgba(212, 175, 106, 0.7);
+  color: var(--gold-l);
+  text-decoration: none;
+}
+.login-card .forgot a:hover {
+  color: var(--gold);
+}
   text-decoration: none;
 }
 
@@ -423,21 +428,21 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
   width: 100%;
   margin-top: 1.4rem;
   padding: 12px;
-  background: #000;
-  border: 1.5px solid #d4af6a;
+  background: transparent;
+  border: 1.5px solid var(--gold-bd);
   border-radius: 8px;
   font-family: 'Cinzel', serif;
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.14em;
-  color: #d4af6a;
+  color: var(--gold-l);
   cursor: pointer;
   transition: background 0.2s, color 0.2s, transform 0.1s;
 }
 
 .login-card .btn-login:hover {
-  background: #d4af6a;
-  color: #000;
+  background: var(--gold-l);
+  color: var(--text);
 }
 
 .login-card .btn-login:active {
